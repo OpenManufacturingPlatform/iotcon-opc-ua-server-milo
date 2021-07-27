@@ -40,9 +40,11 @@ jobs:
           docker build -t ${IMAGE_NAME}-jvm . -f src/main/docker/Dockerfile.jvm
 
       - name: Build with Maven (native)
+        if: never()
         run: mvn --batch-mode package -Pnative
 
       - name: Create image (native)
+        if: never()
         run: |
           docker build -t ${IMAGE_NAME}-native . -f src/main/docker/Dockerfile.native-distroless
 
