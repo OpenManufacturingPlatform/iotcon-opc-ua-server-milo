@@ -8,7 +8,7 @@ This repository is dedicated to OMP IoT Connectivity Working Group
 
 ## Run locally using container
 
-    podman run ghcr.io/ctron/omp-opca-milo-test-server-jvm:latest
+    podman run --rm -ti -p 12686 ghcr.io/ctron/omp-opcua-milo-test-server-jvm:latest
 
 ## Connecting
 
