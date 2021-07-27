@@ -63,7 +63,8 @@ jobs:
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION
 
-          for i in jvm native; do
+          #for i in jvm native; do
+          for i in jvm; do
             docker tag ${IMAGE_NAME}-${i} ${IMAGE_ID}-${i}:$VERSION
             docker push ${IMAGE_ID}-${i}:$VERSION
           done
