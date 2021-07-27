@@ -12,8 +12,7 @@ omp:
 
         https:
           selfSigned: true
-          tls:
-            key: /etc/milo/tls/tls.key
-            certificate: /etc/milo/tls/tls.crt
+          key: /etc/milo/tls/tls.key
+          certificate: /etc/milo/tls/tls.crt
 
         securityDirectory: ${java.io.tmpdir}/server/security
