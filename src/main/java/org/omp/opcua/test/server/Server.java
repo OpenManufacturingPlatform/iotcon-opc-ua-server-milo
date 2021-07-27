@@ -69,7 +69,7 @@ public class Server {
 
     static {
         USERS = new HashMap<>();
-        USERS.put("milo", "the-power-of-open");
+        USERS.put("milo", "open-by-default");
     }
 
     @ConfigProperty(name = "omp.opcua.milo.server.tcp.port", defaultValue = "12686")
