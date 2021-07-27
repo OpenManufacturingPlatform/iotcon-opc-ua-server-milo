@@ -1,4 +1,7 @@
-# OMP OPC UA Test Server based on Eclipse Milo™
+# OMP OPC UA Test Server based on Eclipse&nbsp;Milo™
+
+This is an OPC UA test server implemented with Milo to test and verify different IoT connectivity scenarios in the
+[OMP](https://open-manufacturing.org/).
 
 This repository is dedicated to OMP IoT Connectivity Working Group
 
@@ -6,7 +9,7 @@ This repository is dedicated to OMP IoT Connectivity Working Group
 
     mvn quarkus:run
 
-## Run locally using container
+## Run locally using a containers
 
     podman run --rm -ti -p 12686 ghcr.io/ctron/omp-opcua-milo-test-server-jvm:latest
 
