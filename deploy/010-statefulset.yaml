@@ -1,0 +1,44 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: milo-test-server
+  labels:
+    app.kubernetes.io/name: milo-test-server
+
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: milo-test-server
+
+  replicas: 1
+  serviceName: milo-test-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: milo-test-server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/ctron/omp-opcua-milo-test-server-jvm:latest
+          imagePullPolicy: Always
+          env:
+            - name: OMP_OPCUA_MILO_SERVER_HTTPS_SELFSIGNED
+              value: "false"
+            - name: OMP_OPCUA_MILO_SERVER_SECURITYDIRECTORY
+              value: /var/milo-security
+          ports:
+            - name: https
+              containerPort: 8443
+            - name: opcua
+              containerPort: 12686
+          volumeMounts:
+            - mountPath: /etc/milo/tls
+              name: tls
+            - mountPath: /var/milo-security
+              name: security
+      volumes:
+        - name: tls
+          secret:
+            secretName: milo-test-server-tls
+        - name: security
+          emptyDir: {}
