@@ -1,0 +1,19 @@
+omp:
+  opcua:
+    milo:
+
+      test:
+
+        numberOfSimple: 1000
+        numberOfArray: 1000
+        arraySize: 100
+
+      server:
+
+        https:
+          selfSigned: true
+          tls:
+            key: /etc/milo/tls/tls.key
+            certificate: /etc/milo/tls/tls.crt
+
+        securityDirectory: ${java.io.tmpdir}/server/security
