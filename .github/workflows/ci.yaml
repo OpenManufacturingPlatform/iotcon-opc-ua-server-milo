@@ -32,17 +32,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build with Maven
+      - name: Build with Maven (JVM)
         run: mvn --batch-mode package
 
-      - name: Create image
+      - name: Create image (JVM)
         run: |
           docker build -t ${IMAGE_NAME}-jvm . -f src/main/docker/Dockerfile.jvm
 
-      - name: Build with Maven
+      - name: Build with Maven (native)
         run: mvn --batch-mode package -Pnative
 
-      - name: Create image
+      - name: Create image (native)
         run: |
           docker build -t ${IMAGE_NAME}-native . -f src/main/docker/Dockerfile.native-distroless
 
