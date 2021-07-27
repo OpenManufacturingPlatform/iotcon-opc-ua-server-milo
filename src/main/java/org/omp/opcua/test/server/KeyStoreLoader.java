@@ -21,6 +21,8 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -41,10 +43,15 @@ class KeyStoreLoader {
     private static final char[] PASSWORD = "password".toCharArray();
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Optional<String> discoveryHostname;
 
     private X509Certificate[] serverCertificateChain;
     private X509Certificate serverCertificate;
     private KeyPair serverKeyPair;
+
+    public KeyStoreLoader(Optional<String> discoveryHostname) {
+        this.discoveryHostname = discoveryHostname;
+    }
 
     KeyStoreLoader load(Path baseDir) throws Exception {
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
@@ -69,10 +76,11 @@ class KeyStoreLoader {
                 .setApplicationUri(applicationUri);
 
             // Get as many hostnames and IP addresses as we can listed in the certificate.
-            Set<String> hostnames = Sets.union(
-                Sets.newHashSet(HostnameUtil.getHostname()),
-                HostnameUtil.getHostnames("0.0.0.0", false)
-            );
+
+            final Set<String> hostnames = new HashSet<>();
+            this.discoveryHostname.ifPresent(hostnames::add);
+            hostnames.add(HostnameUtil.getHostname());
+            hostnames.addAll(HostnameUtil.getHostnames("0.0.0.0", false));
 
             for (String hostname : hostnames) {
                 if (IP_ADDR_PATTERN.matcher(hostname).matches()) {

@@ -79,12 +79,15 @@ public class Server {
     @ConfigProperty(name = "omp.opcua.milo.server.securityDirectory")
     Path securityDirectory;
 
-    @ConfigProperty(name="omp.opcua.milo.server.https.selfSigned")
+    @ConfigProperty(name = "omp.opcua.milo.server.https.selfSigned")
     boolean httpsSelfSigned;
-    @ConfigProperty(name="omp.opcua.milo.server.https.key")
+    @ConfigProperty(name = "omp.opcua.milo.server.https.key")
     Optional<Path> tlsKey;
-    @ConfigProperty(name="omp.opcua.milo.server.https.certificate")
+    @ConfigProperty(name = "omp.opcua.milo.server.https.certificate")
     Optional<Path> tlsCrt;
+
+    @ConfigProperty(name = "omp.opcua.milo.server.discovery.hostname")
+    Optional<String> discoveryHostname;
 
     @Inject
     TestConfiguration configuration;
@@ -92,14 +95,14 @@ public class Server {
     @PostConstruct
     public void run() throws Exception {
 
-        Files.createDirectories(securityDirectory);
-        if (!Files.exists(securityDirectory)) {
-            throw new Exception("unable to create security temp dir: " + securityDirectory);
+        Files.createDirectories(this.securityDirectory);
+        if (!Files.exists(this.securityDirectory)) {
+            throw new Exception("unable to create security temp dir: " + this.securityDirectory);
         }
 
-        var pkiDir = securityDirectory.resolve("pki").toFile();
+        var pkiDir = this.securityDirectory.resolve("pki").toFile();
 
-        var loader = new KeyStoreLoader().load(securityDirectory);
+        var loader = new KeyStoreLoader(discoveryHostname).load(this.securityDirectory);
 
         var certificateManager = new DefaultCertificateManager(
                 loader.getServerKeyPair(),
@@ -151,6 +154,7 @@ public class Server {
             var httpsCertificateBuilder = new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
             httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
             HostnameUtil.getHostnames("0.0.0.0").forEach(httpsCertificateBuilder::addDnsName);
+            this.discoveryHostname.ifPresent(httpsCertificateBuilder::addDnsName);
             httpsCertificate = httpsCertificateBuilder.build();
         }
 
@@ -192,6 +196,7 @@ public class Server {
         bindAddresses.add("0.0.0.0");
 
         Set<String> hostnames = new LinkedHashSet<>();
+        this.discoveryHostname.ifPresent(hostnames::add);
         hostnames.add(HostnameUtil.getHostname());
         hostnames.addAll(HostnameUtil.getHostnames("0.0.0.0"));
 
