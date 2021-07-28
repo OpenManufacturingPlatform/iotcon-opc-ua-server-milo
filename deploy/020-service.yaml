@@ -1,0 +1,17 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: milo-test-server
+spec:
+  type: ClusterIP # use LoadBalancer instead
+  # externalIPs:
+  #  - "1.2.3.4" # or add an external IP
+  selector:
+    app.kubernetes.io/name: milo-test-server
+  ports:
+    - name: opcua
+      port: 12686
+      targetPort: opcua
+    - name: https
+      port: 8443
+      targetPort: https

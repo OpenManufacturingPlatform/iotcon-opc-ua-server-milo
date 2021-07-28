@@ -26,6 +26,8 @@ spec:
               value: "false"
             - name: OMP_OPCUA_MILO_SERVER_SECURITYDIRECTORY
               value: /var/milo-security
+            - name: OMP_OPCUA_MILO_SERVER_DISCOVERY_HOSTNAME
+              # value: "my-external-name.cluster.tld"
           ports:
             - name: https
               containerPort: 8443
