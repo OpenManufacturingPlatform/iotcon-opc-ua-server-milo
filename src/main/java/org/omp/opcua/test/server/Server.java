@@ -1,13 +1,3 @@
-/*
- * Copyright 2021 the Eclipse Milo Authors and Red Hat, Inc.
- *
- * This program and the accompanying materials are made
- * available under the terms of the Eclipse Public License 2.0
- * which is available at https://www.eclipse.org/legal/epl-2.0/
- *
- * SPDX-License-Identifier: EPL-2.0
- */
-
 package org.omp.opcua.test.server;
 
 import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_USERNAME;
@@ -21,13 +11,13 @@ import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -74,8 +64,8 @@ public class Server {
 
     @ConfigProperty(name = "omp.opcua.milo.server.tcp.port", defaultValue = "12686")
     int tcpBindPort;
-    @ConfigProperty(name = "omp.opcua.milo.server.http.port", defaultValue = "8443")
-    int httpsBindPort = 8443;
+    @ConfigProperty(name = "omp.opcua.milo.server.tcp.address", defaultValue = "0.0.0.0")
+    String tcpBindAddress;
     @ConfigProperty(name = "omp.opcua.milo.server.securityDirectory")
     Path securityDirectory;
 
@@ -96,13 +86,12 @@ public class Server {
     public void run() throws Exception {
 
         Files.createDirectories(this.securityDirectory);
-        if (!Files.exists(this.securityDirectory)) {
-            throw new Exception("unable to create security temp dir: " + this.securityDirectory);
-        }
+
+        var hostnames = getHostnames();
 
         var pkiDir = this.securityDirectory.resolve("pki").toFile();
 
-        var loader = new KeyStoreLoader(discoveryHostname).load(this.securityDirectory);
+        var loader = KeyCertMaterial.createSelfSigned(hostnames);
 
         var certificateManager = new DefaultCertificateManager(
                 loader.getServerKeyPair(),
@@ -133,12 +122,13 @@ public class Server {
                 .getSanUri(certificate)
                 .orElseThrow(() -> new UaRuntimeException(Bad_ConfigurationError, "certificate is missing the application URI"));
 
-        var endpointConfigurations = createEndpointConfigurations(certificate);
+        var endpointConfigurations = createEndpointConfigurations(certificate, hostnames);
 
         final KeyPair httpsKeyPair;
         final X509Certificate httpsCertificate;
 
         if (!this.httpsSelfSigned) {
+
             var tlsKey = this.tlsKey.orElseThrow(() -> new RuntimeException("Missing TLS key: consider using 'httpsSelfSigned' if you must"));
             var tlsCert = this.tlsCrt.orElseThrow(() -> new RuntimeException("Missing TLS certificate: consider using 'httpsSelfSigned' if you must"));
             LOG.info("Checking TLS material: {} / {}", tlsKey, tlsCert);
@@ -148,7 +138,9 @@ public class Server {
             var key = store.getKey("pem", null);
             httpsCertificate = (X509Certificate) store.getCertificate("pem");
             httpsKeyPair = new KeyPair(httpsCertificate.getPublicKey(), (PrivateKey) key);
+
         } else {
+
             LOG.info("Using self-signed HTTPS certificate");
             httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
             var httpsCertificateBuilder = new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
@@ -156,6 +148,7 @@ public class Server {
             HostnameUtil.getHostnames("0.0.0.0").forEach(httpsCertificateBuilder::addDnsName);
             this.discoveryHostname.ifPresent(httpsCertificateBuilder::addDnsName);
             httpsCertificate = httpsCertificateBuilder.build();
+
         }
 
         var serverConfig = OpcUaServerConfig.builder()
@@ -168,7 +161,8 @@ public class Server {
                                 "Open Manufacturing Platform",
                                 NAME,
                                 OpcUaServer.SDK_VERSION,
-                                "", DateTime.now()))
+                                "",
+                                DateTime.now()))
                 .setCertificateManager(certificateManager)
                 .setTrustListManager(trustListManager)
                 .setCertificateValidator(certificateValidator)
@@ -189,82 +183,69 @@ public class Server {
         testNamespace.startup();
     }
 
-    private Set<EndpointConfiguration> createEndpointConfigurations(X509Certificate certificate) {
-        Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
+    private Set<String> getHostnames() {
 
-        List<String> bindAddresses = new ArrayList<>();
-        bindAddresses.add("0.0.0.0");
+        if (this.discoveryHostname.isPresent()) {
 
-        Set<String> hostnames = new LinkedHashSet<>();
-        this.discoveryHostname.ifPresent(hostnames::add);
-        hostnames.add(HostnameUtil.getHostname());
-        hostnames.addAll(HostnameUtil.getHostnames("0.0.0.0"));
+            return Collections.singleton(this.discoveryHostname.get());
 
-        for (String bindAddress : bindAddresses) {
-            for (String hostname : hostnames) {
-                EndpointConfiguration.Builder builder = EndpointConfiguration.newBuilder()
-                        .setBindAddress(bindAddress)
-                        .setHostname(hostname)
-                        .setPath("/milo")
-                        .setCertificate(certificate)
-                        .addTokenPolicies(USER_TOKEN_POLICY_USERNAME);
+        } else {
 
-                EndpointConfiguration.Builder noSecurityBuilder = builder.copy()
-                        .setSecurityPolicy(SecurityPolicy.None)
-                        .setSecurityMode(MessageSecurityMode.None);
+            var hostnames = new LinkedHashSet<String>();
+            hostnames.add(HostnameUtil.getHostname());
+            hostnames.addAll(HostnameUtil.getHostnames("0.0.0.0"));
+            return hostnames;
 
-                endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder));
-                endpointConfigurations.add(buildHttpsEndpoint(noSecurityBuilder));
-
-                // TCP Basic256Sha256 / SignAndEncrypt
-                endpointConfigurations.add(buildTcpEndpoint(
-                        builder.copy()
-                                .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
-                                .setSecurityMode(MessageSecurityMode.SignAndEncrypt))
-                );
-
-                // HTTPS Basic256Sha256 / Sign (SignAndEncrypt not allowed for HTTPS)
-                endpointConfigurations.add(buildHttpsEndpoint(
-                        builder.copy()
-                                .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
-                                .setSecurityMode(MessageSecurityMode.Sign))
-                );
-
-                /*
-                 * It's good practice to provide a discovery-specific endpoint with no security.
-                 * It's required practice if all regular endpoints have security configured.
-                 *
-                 * Usage of the  "/discovery" suffix is defined by OPC UA Part 6:
-                 *
-                 * Each OPC UA Server Application implements the Discovery Service Set. If the OPC UA Server requires a
-                 * different address for this Endpoint it shall create the address by appending the path "/discovery" to
-                 * its base address.
-                 */
-
-                EndpointConfiguration.Builder discoveryBuilder = builder.copy()
-                        .setPath("/milo/discovery")
-                        .setSecurityPolicy(SecurityPolicy.None)
-                        .setSecurityMode(MessageSecurityMode.None);
-
-                endpointConfigurations.add(buildTcpEndpoint(discoveryBuilder));
-                endpointConfigurations.add(buildHttpsEndpoint(discoveryBuilder));
-            }
         }
 
-        return endpointConfigurations;
     }
 
-    private EndpointConfiguration buildTcpEndpoint(EndpointConfiguration.Builder base) {
-        return base.copy()
+    private Set<EndpointConfiguration> createEndpointConfigurations(X509Certificate certificate, Set<String> hostnames) {
+
+        var result = new LinkedHashSet<EndpointConfiguration>();
+
+        for (var hostname : hostnames) {
+            buildEndpoint(certificate, hostname, result::add);
+        }
+
+        return result;
+
+    }
+
+    private void buildEndpoint(X509Certificate certificate, String hostname, Consumer<EndpointConfiguration> consumer) {
+
+        var builder = EndpointConfiguration.newBuilder()
+                .setBindAddress(this.tcpBindAddress)
+                .setHostname(hostname)
+                .setPath("/milo")
+                .setCertificate(certificate)
                 .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
                 .setBindPort(this.tcpBindPort)
-                .build();
+                .addTokenPolicies(USER_TOKEN_POLICY_USERNAME);
+
+        // no security
+        consumer.accept(
+                builder.copy()
+                        .setSecurityPolicy(SecurityPolicy.None)
+                        .setSecurityMode(MessageSecurityMode.None)
+                        .build()
+        );
+        // default security
+        consumer.accept(
+                builder.copy()
+                        .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
+                        .setSecurityMode(MessageSecurityMode.SignAndEncrypt)
+                        .build()
+        );
+        // no security - discovery
+        consumer.accept(
+                builder.copy()
+                        .setPath("/milo/discovery")
+                        .setSecurityPolicy(SecurityPolicy.None)
+                        .setSecurityMode(MessageSecurityMode.None)
+                        .build()
+        );
+
     }
 
-    private EndpointConfiguration buildHttpsEndpoint(EndpointConfiguration.Builder base) {
-        return base.copy()
-                .setTransportProfile(TransportProfile.HTTPS_UABINARY)
-                .setBindPort(this.httpsBindPort)
-                .build();
-    }
 }

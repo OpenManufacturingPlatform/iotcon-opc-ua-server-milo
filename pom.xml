@@ -67,12 +67,6 @@
             <version>0.6.3</version>
         </dependency>
 
-        <dependency>
-            <groupId>de.dentrassi.crypto</groupId>
-            <artifactId>pem-keystore</artifactId>
-            <version>2.2.0</version>
-        </dependency>
-
         <!-- Quarkus -->
 
         <dependency>
@@ -82,6 +76,12 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-config-yaml</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>de.dentrassi.crypto</groupId>
+            <artifactId>pem-keystore</artifactId>
+            <version>2.2.0</version>
         </dependency>
 
     </dependencies>
