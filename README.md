@@ -7,6 +7,8 @@ This repository is dedicated to OMP IoT Connectivity Working Group
 
 ## Build and run locally
 
+Run the following command from the root of the repository:
+
     mvn quarkus:dev
 
 ## Run locally using a containers
