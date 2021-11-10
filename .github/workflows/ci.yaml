@@ -37,6 +37,7 @@ jobs:
 
       - name: Create image (JVM)
         run: |
+          echo "LABEL org.opencontainers.image.source=\"https://github.com/${{ github.repository }}\"" >> src/main/docker/Dockerfile.jvm
           docker build -t ${IMAGE_NAME}-jvm . -f src/main/docker/Dockerfile.jvm
 
       - name: Build with Maven (native)
@@ -46,6 +47,7 @@ jobs:
       - name: Create image (native)
         if: ${{ false }}
         run: |
+          echo "LABEL org.opencontainers.image.source=\"https://github.com/${{ github.repository }}\"" >> src/main/docker/Dockerfile.native-distroless
           docker build -t ${IMAGE_NAME}-native . -f src/main/docker/Dockerfile.native-distroless
 
       - name: Login to github container repository
