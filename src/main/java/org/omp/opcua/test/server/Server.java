@@ -1,5 +1,6 @@
 package org.omp.opcua.test.server;
 
+import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
 import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_USERNAME;
 import static org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_ConfigurationError;
 
@@ -14,6 +15,7 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -25,7 +27,9 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
+import org.eclipse.milo.opcua.sdk.server.identity.IdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.UsernameIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.UaRuntimeException;
@@ -42,6 +46,8 @@ import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedHttpsCertificateBuilder;
 import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 import org.eclipse.milo.opcua.stack.server.security.DefaultServerCertificateValidator;
+import org.omp.opcua.test.server.simulation.SimulationConfiguration;
+import org.omp.opcua.test.server.simulation.SimulationNamespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,8 +85,14 @@ public class Server {
     @ConfigProperty(name = "omp.opcua.milo.server.discovery.hostname")
     Optional<String> discoveryHostname;
 
+    @ConfigProperty(name = "omp.opcua.milo.server.enableAnonymous", defaultValue = "false")
+    boolean enableAnonymous;
+
     @Inject
     TestConfiguration configuration;
+
+    @Inject
+    SimulationConfiguration simulationConfiguration;
 
     @PostConstruct
     public void run() throws Exception {
@@ -103,8 +115,9 @@ public class Server {
         var certificateValidator =
                 new DefaultServerCertificateValidator(trustListManager);
 
-        var identityValidator = new UsernameIdentityValidator(
-                false,
+        var validators = new LinkedList<IdentityValidator<String>>();
+        var userValidator = new UsernameIdentityValidator(
+                enableAnonymous,
                 authChallenge -> {
                     var username = authChallenge.getUsername();
                     var password = authChallenge.getPassword();
@@ -112,6 +125,11 @@ public class Server {
                     return (expected != null) && expected.equals(password);
                 }
         );
+        validators.add(userValidator);
+
+        if (this.enableAnonymous) {
+            LOG.warn("Anonymous authentication enabled");
+        }
 
         var certificate = certificateManager.getCertificates()
                 .stream()
@@ -168,7 +186,7 @@ public class Server {
                 .setCertificateValidator(certificateValidator)
                 .setHttpsKeyPair(httpsKeyPair)
                 .setHttpsCertificate(httpsCertificate)
-                .setIdentityValidator(new CompositeValidator<>(identityValidator))
+                .setIdentityValidator(new CompositeValidator<>(validators))
                 .setProductUri(PRODUCT_URI)
                 .build();
 
@@ -181,6 +199,8 @@ public class Server {
 
         var testNamespace = new TestNamespace(server, this.configuration);
         testNamespace.startup();
+        var simulationNamespace = new SimulationNamespace(server, this.simulationConfiguration);
+        simulationNamespace.startup();
     }
 
     private Set<String> getHostnames() {
@@ -221,7 +241,11 @@ public class Server {
                 .setCertificate(certificate)
                 .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
                 .setBindPort(this.tcpBindPort)
-                .addTokenPolicies(USER_TOKEN_POLICY_USERNAME);
+                .addTokenPolicy(USER_TOKEN_POLICY_USERNAME);
+
+        if (this.enableAnonymous) {
+            builder = builder.addTokenPolicy(USER_TOKEN_POLICY_ANONYMOUS);
+        }
 
         // no security
         consumer.accept(

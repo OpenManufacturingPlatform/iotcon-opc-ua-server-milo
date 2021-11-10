@@ -161,8 +161,8 @@ public class TestNamespace extends ManagedNamespaceWithLifecycle {
 
                 var node = new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                         .setNodeId(newNodeId("OMP/" + prefix + "/" + name + "/" + t.getName()))
-                        .setAccessLevel(AccessLevel.READ_WRITE)
-                        .setUserAccessLevel(AccessLevel.READ_WRITE)
+                        .setAccessLevel(AccessLevel.READ_ONLY)
+                        .setUserAccessLevel(AccessLevel.READ_ONLY)
                         .setBrowseName(newQualifiedName(t.getName()))
                         .setDisplayName(LocalizedText.english(t.getName()))
                         .setDataType(t.getTypeId())

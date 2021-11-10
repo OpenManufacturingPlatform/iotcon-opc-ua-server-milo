@@ -8,6 +8,9 @@ omp:
         numberOfArray: 1000
         arraySize: 100
 
+      simulation:
+        numberOfDevices: 100
+
       server:
 
         https:
