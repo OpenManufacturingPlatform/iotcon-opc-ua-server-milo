@@ -30,7 +30,6 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
     public static final String NAMESPACE_URI = "urn:omp:milo:simulation-namespace";
     private final SimulationConfiguration configuration;
     private final SubscriptionModel subscriptionModel;
-    private final DataTypeDictionaryManager dictionaryManager;
     private final List<Runnable> tasks = new ArrayList<>();
     private final ScheduledExecutorService executor;
 
@@ -39,10 +38,8 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
         this.configuration = configuration;
 
         this.subscriptionModel = new SubscriptionModel(server, this);
-        this.dictionaryManager = new DataTypeDictionaryManager(getNodeContext(), NAMESPACE_URI);
         this.executor = Executors.newScheduledThreadPool(1);
 
-        getLifecycleManager().addLifecycle(this.dictionaryManager);
         getLifecycleManager().addLifecycle(this.subscriptionModel);
 
         getLifecycleManager().addStartupTask(this::populateNamespace);
@@ -77,12 +74,12 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
         var physical = createFolder(folder.getNodeId(), "OMP/Simulation/" + name + "/Physical Properties", "Physical Properties", "Physical Properties");
         var control = createFolder(folder.getNodeId(), "OMP/Simulation/" + name + "/Control", "Control", "Control");
 
-        registerVariable(simulation, name,  "ambientTemperatureSetpoint", "Ambient Temperature Setpoint", Identifiers.Double, device::getAmbientTemperatureSetpoint, device::setAmbientTemperatureSetpoint);
+        registerVariable(simulation, name, "ambientTemperatureSetpoint", "Ambient Temperature Setpoint", Identifiers.Double, device::getAmbientTemperatureSetpoint, device::setAmbientTemperatureSetpoint);
 
-        registerVariable(physical, name,  "temperature", "Temperature", Identifiers.Double, device::getTemperature, null);
-        registerVariable(physical, name,  "ambientTemperature", "Ambient Temperature", Identifiers.Double, device::getAmbientTemperature, null);
-        registerVariable(physical, name,  "powerConsumption", "Power Consumption", Identifiers.Double, device::getPowerConsumption, null);
-        registerVariable(control, name,  "active", "Active", Identifiers.Boolean, device::isActive, device::setActive);
+        registerVariable(physical, name, "temperature", "Temperature", Identifiers.Double, device::getTemperature, null);
+        registerVariable(physical, name, "ambientTemperature", "Ambient Temperature", Identifiers.Double, device::getAmbientTemperature, null);
+        registerVariable(physical, name, "powerConsumption", "Power Consumption", Identifiers.Double, device::getPowerConsumption, null);
+        registerVariable(control, name, "active", "Active", Identifiers.Boolean, device::isActive, device::setActive);
 
         this.tasks.add(device::tick);
     }
@@ -95,7 +92,7 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
             NodeId dataType,
             Supplier<DataValue> extractor,
             Consumer<DataValue> injector
-            ) {
+    ) {
 
         var accessLevel = EnumSet.of(AccessLevel.CurrentRead);
 
@@ -133,6 +130,9 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
 
     private UaFolderNode createBaseFolder() {
         var index = getServer().getNamespaceTable().getIndex(TestNamespace.NAMESPACE_URI);
+        if (index == null) {
+            throw new RuntimeException("Missing namespace: " + TestNamespace.NAMESPACE_URI);
+        }
         NodeId parentNodeId = new NodeId(index, "OMP");
 
         return createFolder(parentNodeId, "OMP/Simulation", "Simulation", "Simulation");
