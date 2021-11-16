@@ -26,8 +26,6 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.omp.opcua.test.server.TestNamespace;
 
-import io.smallrye.common.annotation.Identifier;
-
 public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
     public static final String NAMESPACE_URI = "urn:omp:milo:simulation-namespace";
     private final SimulationConfiguration configuration;
@@ -74,19 +72,17 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
 
         var name = String.format("Device %04d", idx);
 
-        var folder = new UaFolderNode(
-                getNodeContext(),
-                newNodeId("OMP/Simulation/" + name),
-                newQualifiedName(name),
-                LocalizedText.english(name)
-        );
-        getNodeManager().addNode(folder);
-        base.addOrganizes(folder);
+        var folder = createFolder(base.getNodeId(), "OMP/Simulation/" + name, name, name);
+        var simulation = createFolder(folder.getNodeId(), "OMP/Simulation/" + name + "/Simulation Properties", "Simulation Properties", "Simulation Properties");
+        var physical = createFolder(folder.getNodeId(), "OMP/Simulation/" + name + "/Physical Properties", "Physical Properties", "Physical Properties");
+        var control = createFolder(folder.getNodeId(), "OMP/Simulation/" + name + "/Control", "Control", "Control");
 
-        registerVariable(folder, name,  "temperature", "Temperature", Identifiers.Double, device::getTemperature, null);
-        registerVariable(folder, name,  "ambientTemperature", "Ambient temperature", Identifiers.Double, device::getAmbientTemperature, device::setAmbientTemperature);
-        registerVariable(folder, name,  "powerConsumption", "Power Consumption", Identifiers.Double, device::getPowerConsumption, null);
-        registerVariable(folder, name,  "active", "Active", Identifiers.Boolean, device::isActive, device::setActive);
+        registerVariable(simulation, name,  "ambientTemperatureSetpoint", "Ambient Temperature Setpoint", Identifiers.Double, device::getAmbientTemperatureSetpoint, device::setAmbientTemperatureSetpoint);
+
+        registerVariable(physical, name,  "temperature", "Temperature", Identifiers.Double, device::getTemperature, null);
+        registerVariable(physical, name,  "ambientTemperature", "Ambient Temperature", Identifiers.Double, device::getAmbientTemperature, null);
+        registerVariable(physical, name,  "powerConsumption", "Power Consumption", Identifiers.Double, device::getPowerConsumption, null);
+        registerVariable(control, name,  "active", "Active", Identifiers.Boolean, device::isActive, device::setActive);
 
         this.tasks.add(device::tick);
     }
@@ -136,18 +132,27 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
     }
 
     private UaFolderNode createBaseFolder() {
+        var index = getServer().getNamespaceTable().getIndex(TestNamespace.NAMESPACE_URI);
+        NodeId parentNodeId = new NodeId(index, "OMP");
 
-        NodeId folderNodeId = newNodeId("OMP.Simulation");
+        return createFolder(parentNodeId, "OMP/Simulation", "Simulation", "Simulation");
+    }
+
+    private UaFolderNode createFolder(
+            NodeId parentNodeId,
+            String nodeId,
+            String name,
+            String label
+    ) {
+        NodeId folderNodeId = newNodeId(nodeId);
         UaFolderNode folderNode = new UaFolderNode(
                 getNodeContext(),
                 folderNodeId,
-                newQualifiedName("OMP Simulation"),
-                LocalizedText.english("OMP Simulation")
+                newQualifiedName(name),
+                LocalizedText.english(label)
         );
         getNodeManager().addNode(folderNode);
 
-        var index = getServer().getNamespaceTable().getIndex(TestNamespace.NAMESPACE_URI);
-        NodeId parentNodeId = new NodeId(index, "OMP");
         folderNode.addReference(new Reference(
                 folderNode.getNodeId(),
                 Identifiers.Organizes,
