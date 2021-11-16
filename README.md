@@ -13,7 +13,7 @@ Run the following command from the root of the repository:
 
 ## Run locally using a containers
 
-    podman run --rm -ti -p 12686 ghcr.io/ctron/omp-opcua-milo-test-server-jvm:latest
+    podman run --rm -ti -p 12686:12686 ghcr.io/ctron/omp-opcua-milo-test-server-jvm:latest
 
 ## Connecting
 
