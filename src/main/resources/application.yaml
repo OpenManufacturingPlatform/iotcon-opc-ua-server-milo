@@ -9,7 +9,7 @@ omp:
         arraySize: 100
 
       simulation:
-        numberOfDevices: 100
+        numberOfDevices: 10
 
       server:
 
