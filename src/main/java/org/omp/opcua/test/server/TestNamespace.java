@@ -140,8 +140,8 @@ public class TestNamespace extends ManagedNamespaceWithLifecycle {
 
     private void populateNamespace() {
         var base = createBaseFolder();
-        populateSingle(base, SINGLE_TYPES, this.configuration.getNumberOfSimple());
-        populateArray(base, ARRAY_TYPES, this.configuration.getNumberOfArray(), this.configuration.getArraySize());
+        populateSingle(base, SINGLE_TYPES, this.configuration.numberOfSimple());
+        populateArray(base, ARRAY_TYPES, this.configuration.numberOfArray(), this.configuration.arraySize());
     }
 
     private UaFolderNode createBaseFolder() {

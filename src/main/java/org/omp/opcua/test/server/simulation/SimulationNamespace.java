@@ -58,7 +58,7 @@ public class SimulationNamespace extends ManagedNamespaceWithLifecycle {
 
     private void populateNamespace() {
         var base = createBaseFolder();
-        for (int i = 0; i < this.configuration.numberOfDevices; i++) {
+        for (int i = 0; i < this.configuration.numberOfDevices(); i++) {
             var device = new Device1();
             registerDevice(base, i, device);
         }
