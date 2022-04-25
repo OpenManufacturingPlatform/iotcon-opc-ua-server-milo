@@ -21,6 +21,7 @@ import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 
@@ -33,16 +34,24 @@ public class TestNamespace extends ManagedNamespaceWithLifecycle {
     private final DataTypeDictionaryManager dictionaryManager;
     private final SubscriptionModel subscriptionModel;
 
-    private static class TestType {
+    private interface TestType {
+        String getName();
+        NodeId getTypeId();
+
+        DataValue next();
+        DataValue nextArray(int count);
+    }
+
+    private static class SimpleTestType implements TestType {
         private final String name;
         private final NodeId typeId;
         private final Supplier<Object> generator;
         private final Function<Integer, Object> arrayCreator;
 
-        TestType(final String name,
-                 final NodeId typeId,
-                 final Function<Integer, Object> arrayCreator,
-                 final Supplier<Object> generator) {
+        SimpleTestType(final String name,
+                       final NodeId typeId,
+                       final Function<Integer, Object> arrayCreator,
+                       final Supplier<Object> generator) {
             this.name = name;
             this.typeId = typeId;
             this.arrayCreator = arrayCreator;
@@ -70,10 +79,47 @@ public class TestNamespace extends ManagedNamespaceWithLifecycle {
         }
     }
 
+    private static class ErrorTestType implements TestType {
+
+        private final String name;
+        private final NodeId typeId;
+
+        ErrorTestType(final String name,
+                      final NodeId typeId) {
+            this.name = name;
+            this.typeId = typeId;
+        }
+
+        @Override
+        public String getName() {
+            return this.name;
+        }
+
+        @Override
+        public NodeId getTypeId() {
+            return this.typeId;
+        }
+
+        @Override
+        public DataValue next() {
+            return new DataValue.Builder()
+                    .setStatus(StatusCode.BAD)
+                    .build();
+        }
+
+        @Override
+        public DataValue nextArray(int count) {
+            return new DataValue.Builder()
+                    .setStatus(StatusCode.BAD)
+                    .build();
+        }
+    }
+
     private static final TestType[] SINGLE_TYPES = new TestType[]{
-            new TestType("Int64", Identifiers.Int64, Long[]::new, R::nextLong),
-            new TestType("Float", Identifiers.Float, Double[]::new, R::nextDouble),
-            new TestType("Boolean", Identifiers.Boolean, Boolean[]::new, R::nextBoolean),
+            new SimpleTestType("Int64", Identifiers.Int64, Long[]::new, R::nextLong),
+            new SimpleTestType("Float", Identifiers.Float, Double[]::new, R::nextDouble),
+            new SimpleTestType("Boolean", Identifiers.Boolean, Boolean[]::new, R::nextBoolean),
+            new ErrorTestType("Error", Identifiers.Float),
     };
 
     // Array types, for now we use the same as the single types.
