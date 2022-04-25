@@ -3,7 +3,6 @@ package org.omp.opcua.test.server.simulation;
 import java.util.Random;
 
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
-import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 
 public class Device1 {
 
