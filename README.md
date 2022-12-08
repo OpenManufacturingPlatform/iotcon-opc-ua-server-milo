@@ -1,3 +1,7 @@
+> THIS REPOSITORY WAS ARCHIVED ON DECEMBER 8, 2022. OMP WILL CLOSE AT THE END OF DECEMBER, 2022.
+>
+>
+
 # OMP OPC UA Test Server based on Eclipse&nbsp;Milo™
 
 This is an OPC UA test server implemented with Milo to test and verify different IoT connectivity scenarios in the
